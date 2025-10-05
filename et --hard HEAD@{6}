@@ -1,0 +1,19 @@
+[33m755aef1[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m HEAD@{0}: reset: moving to 755aef1
+[33mf72b965[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{1}: reset: moving to f72b965
+[33m5d92aff[m HEAD@{2}: commit: ворк 4
+[33m755aef1[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m HEAD@{3}: reset: moving to 755aef1
+[33mcdfc216[m HEAD@{4}: checkout: moving from feb4df7f860f69620621702841986051a6ff4491 to main
+[33mfeb4df7[m HEAD@{5}: commit: ворк
+[33mf72b965[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{6}: reset: moving to f72b965
+[33mb6ba6c9[m HEAD@{7}: commit: лщд
+[33mf6bb17a[m HEAD@{8}: commit: нот ворк
+[33m755aef1[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m HEAD@{9}: checkout: moving from 349b7d2154b6da96e8a890d4cdd3b236eda0ceec to 755aef1c094f3cf856777a10aedb7f694e659d09
+[33m349b7d2[m HEAD@{10}: checkout: moving from main to 349b7d2154b6da96e8a890d4cdd3b236eda0ceec
+[33mcdfc216[m HEAD@{11}: commit: нот ворк
+[33m2a336cb[m HEAD@{12}: commit: нот ворк
+[33m349b7d2[m HEAD@{13}: commit: комит йоу
+[33m755aef1[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m HEAD@{14}: commit: нот ворк
+[33mf72b965[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{15}: commit: ворк 3
+[33m77d82c3[m HEAD@{16}: commit: воркаем 2
+[33m04ea22d[m HEAD@{17}: commit: воркаем
+[33m460f831[m HEAD@{18}: clone: from https://github.com/draker2nich/t-shirt-ai.git

@@ -1,0 +1,65 @@
+{
+  "name": "ai-fashion-studio",
+  "version": "2.0.0",
+  "description": "AI-powered textile design studio - create unique patterns for apparel with AI",
+  "private": true,
+  "author": "Your Name",
+  "license": "MIT",
+  "homepage": ".",
+  "dependencies": {
+    "@testing-library/jest-dom": "^5.17.0",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/user-event": "^13.5.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-scripts": "5.0.1",
+    "replicate": "^0.25.2",
+    "three": "^0.160.0",
+    "web-vitals": "^2.1.4"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.4.32",
+    "tailwindcss": "^3.4.0"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
+    "dev": "concurrently \"npm start\" \"cd server && npm run dev\"",
+    "server": "cd server && npm start",
+    "server:dev": "cd server && npm run dev"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "keywords": [
+    "ai",
+    "design",
+    "textile",
+    "pattern",
+    "stable-diffusion",
+    "replicate",
+    "react",
+    "fashion",
+    "apparel",
+    "t-shirt",
+    "clothing"
+  ]
+}

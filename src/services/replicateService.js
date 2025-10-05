@@ -1,24 +1,25 @@
 /**
  * Service for working with Replicate API through backend proxy
+ * УЛУЧШЕНО: Более точные промпты для бесшовных паттернов
  */
 import config from '../config';
 
 const PROXY_API_URL = process.env.REACT_APP_PROXY_URL || 'http://localhost:3001/api';
 const SDXL_MODEL_VERSION = '39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b';
 
-// Get API key from config
 const API_KEY = config.REPLICATE_API_KEY;
 
 /**
- * Create a prediction (start image generation) with settings support
+ * Create a prediction with enhanced prompts for seamless patterns
  */
 export async function createPrediction(prompt, settings = {}, seed = null) {
-  // Apply settings to prompt
   const enhancedPrompt = enhancePromptWithSettings(prompt, settings);
   
-  // Adjust technical parameters based on detail level
   const inferenceSteps = settings.detailLevel === 'high' ? 40 : 
                          settings.detailLevel === 'medium' ? 25 : 15;
+  
+  // УЛУЧШЕНО: Усиленный negative prompt для бесшовности
+  const negativePrompt = buildNegativePrompt(settings);
   
   const response = await fetch(`${PROXY_API_URL}/predictions`, {
     method: 'POST',
@@ -30,7 +31,7 @@ export async function createPrediction(prompt, settings = {}, seed = null) {
       version: SDXL_MODEL_VERSION,
       input: {
         prompt: enhancedPrompt,
-        negative_prompt: "blurry, low quality, distorted, ugly, watermark, text, signature, logo, letters, words, bad anatomy, deformed, artifacts",
+        negative_prompt: negativePrompt,
         width: 1024,
         height: 1024,
         num_outputs: 1,
@@ -75,13 +76,12 @@ export async function getPrediction(predictionId) {
  */
 export async function waitForPrediction(predictionId, onProgress = null) {
   let attempts = 0;
-  const maxAttempts = 120; // Increase timeout for better reliability
+  const maxAttempts = 120;
   
   while (attempts < maxAttempts) {
     try {
       const prediction = await getPrediction(predictionId);
       
-      // Determine detailed status
       let detailedStatus = {
         status: prediction.status,
         stage: 'unknown',
@@ -94,7 +94,6 @@ export async function waitForPrediction(predictionId, onProgress = null) {
         detailedStatus.message = 'Initializing AI...';
         detailedStatus.progress = 10;
       } else if (prediction.status === 'processing') {
-        // Estimate progress based on time
         const progressEstimate = Math.min(50 + (attempts * 2), 90);
         detailedStatus.stage = 'generating';
         detailedStatus.message = 'Creating design...';
@@ -104,7 +103,6 @@ export async function waitForPrediction(predictionId, onProgress = null) {
         detailedStatus.message = 'Design ready!';
         detailedStatus.progress = 100;
         
-        // Ensure image is fully loaded
         if (prediction.output && prediction.output[0]) {
           await preloadImage(prediction.output[0]);
         }
@@ -127,13 +125,11 @@ export async function waitForPrediction(predictionId, onProgress = null) {
       }
     } catch (error) {
       console.error('Error checking prediction status:', error);
-      // Continue polling even if there's a temporary error
       if (attempts > 10) {
-        throw error; // Fail after multiple attempts
+        throw error;
       }
     }
     
-    // Wait before next check (increase interval for long-running tasks)
     const waitTime = attempts < 10 ? 1000 : 2000;
     await new Promise(resolve => setTimeout(resolve, waitTime));
     attempts++;
@@ -143,7 +139,7 @@ export async function waitForPrediction(predictionId, onProgress = null) {
 }
 
 /**
- * Preload image to ensure it's fully loaded
+ * Preload image
  */
 async function preloadImage(url) {
   return new Promise((resolve, reject) => {
@@ -155,13 +151,12 @@ async function preloadImage(url) {
 }
 
 /**
- * Generate multiple design variants with settings support
+ * Generate multiple design variants
  */
 export async function generateDesigns(prompt, settings = {}, onProgressUpdate = null) {
   const numberOfVariants = settings.numberOfVariants || 4;
   console.log(`Starting parallel generation of ${numberOfVariants} variants...`);
   
-  // Initialize status array for each image
   const imageStatuses = Array.from({ length: numberOfVariants }, (_, i) => ({
     index: i,
     stage: 'creating',
@@ -177,7 +172,6 @@ export async function generateDesigns(prompt, settings = {}, onProgressUpdate = 
   };
   
   try {
-    // Create ALL predictions in parallel with different seeds
     updateProgress();
     
     const predictionPromises = Array.from({ length: numberOfVariants }, async (_, i) => {
@@ -192,7 +186,6 @@ export async function generateDesigns(prompt, settings = {}, onProgressUpdate = 
       updateProgress();
       
       try {
-        // Use different seed for each variant for diversity
         const seed = Math.floor(Math.random() * 1000000) + i * 1000;
         const prediction = await createPrediction(prompt, settings, seed);
         imageStatuses[i] = {
@@ -218,11 +211,9 @@ export async function generateDesigns(prompt, settings = {}, onProgressUpdate = 
       }
     });
     
-    // Wait for ALL predictions to be created
     const predictions = await Promise.all(predictionPromises);
     console.log(`All ${numberOfVariants} requests created, waiting for generation...`);
     
-    // Wait for ALL generations to complete in parallel
     const results = await Promise.all(
       predictions.map((pred, index) => {
         console.log(`Waiting for result ${index + 1}/${numberOfVariants} (ID: ${pred.id})`);
@@ -244,7 +235,6 @@ export async function generateDesigns(prompt, settings = {}, onProgressUpdate = 
     
     console.log(`All ${numberOfVariants} images ready!`);
     
-    // Update statuses to "completed"
     imageStatuses.forEach((status, i) => {
       imageStatuses[i] = {
         ...status,
@@ -256,7 +246,6 @@ export async function generateDesigns(prompt, settings = {}, onProgressUpdate = 
     });
     updateProgress();
     
-    // Extract image URLs
     return results
       .filter(result => result.output && result.output[0])
       .map((result, index) => ({
@@ -273,13 +262,31 @@ export async function generateDesigns(prompt, settings = {}, onProgressUpdate = 
 }
 
 /**
- * Enhance prompt with settings for better results
+ * УЛУЧШЕНО: Создание негативного промпта с учетом бесшовности
+ */
+function buildNegativePrompt(settings = {}) {
+  let negativePrompt = 'blurry, low quality, distorted, ugly, watermark, text, signature, logo, letters, words, bad anatomy, deformed, artifacts';
+  
+  // Для бесшовных паттернов - усиленный negative prompt
+  if (settings.patternType === 'seamless') {
+    negativePrompt += ', visible seams, edge discontinuity, border artifacts, non-repeating pattern, asymmetric edges, mismatched borders, broken pattern at edges, seam lines, edge misalignment, incomplete pattern, cut-off elements at borders';
+  }
+  
+  // Для геометрических - акцент на симметрию
+  if (settings.patternType === 'geometric' || settings.style === 'geometric') {
+    negativePrompt += ', asymmetric shapes, irregular patterns, uneven spacing, distorted geometry';
+  }
+  
+  return negativePrompt;
+}
+
+/**
+ * УЛУЧШЕНО: Enhance prompt with BETTER seamless instructions
  */
 function enhancePromptWithSettings(prompt, settings = {}) {
   let enhancedPrompt = prompt;
   
-  // Ensure prompt is in English for best results
-  // Common translations if user inputs in Russian
+  // Translate common Russian words
   const translations = {
     'закат': 'sunset',
     'океан': 'ocean',
@@ -304,49 +311,51 @@ function enhancePromptWithSettings(prompt, settings = {}) {
     'галактика': 'galaxy'
   };
   
-  // Translate Russian words
   Object.keys(translations).forEach(russian => {
     const regex = new RegExp(russian, 'gi');
     enhancedPrompt = enhancedPrompt.replace(regex, translations[russian]);
   });
   
-  // Add pattern type instructions
+  // КРИТИЧЕСКИ ВАЖНО: Добавляем СИЛЬНЫЕ инструкции для бесшовности
   if (settings.patternType === 'seamless') {
-    enhancedPrompt += ', seamless pattern, tileable texture, repeating design, perfect for textile printing';
+    enhancedPrompt += ', SEAMLESS REPEATING PATTERN, tileable texture, infinite pattern, edges match perfectly, continues at borders, no visible seams, wrap-around design, perfect tiling pattern, edge-to-edge continuity, repeatable textile design, symmetric borders, pattern loops seamlessly';
+    
+    // Дополнительный акцент для текстиля
+    enhancedPrompt += ', designed for textile printing, fabric pattern, all-over print, continuous repeat pattern';
   } else if (settings.patternType === 'geometric') {
-    enhancedPrompt += ', geometric pattern, mathematical shapes, symmetrical design, modern abstract geometry';
+    enhancedPrompt += ', SEAMLESS GEOMETRIC PATTERN, tileable mathematical shapes, perfect symmetry, repeating angular design, edge-to-edge match, geometric tessellation, modern abstract grid, symmetric borders';
   } else if (settings.patternType === 'composition') {
-    enhancedPrompt += ', artistic composition, centered design, full print artwork, complete illustration';
+    enhancedPrompt += ', artistic composition, centered design, full print artwork, complete illustration, standalone image for textile';
   }
   
   // Add style modifiers
   if (settings.style === 'realistic') {
-    enhancedPrompt += ', photorealistic style, highly detailed, 8k quality, professional photography';
+    enhancedPrompt += ', photorealistic style, highly detailed, 8k quality, professional photography, crisp details';
   } else if (settings.style === 'abstract') {
-    enhancedPrompt += ', abstract art style, modern design, artistic interpretation, contemporary art';
+    enhancedPrompt += ', abstract art style, modern design, artistic interpretation, contemporary art, flowing shapes';
   } else if (settings.style === 'minimalist') {
-    enhancedPrompt += ', minimalist style, simple clean lines, negative space, elegant simplicity';
+    enhancedPrompt += ', minimalist style, simple clean lines, negative space, elegant simplicity, refined design';
   } else if (settings.style === 'vintage') {
-    enhancedPrompt += ', vintage retro style, nostalgic aesthetic, classic design, old-school vibes';
+    enhancedPrompt += ', vintage retro style, nostalgic aesthetic, classic design, old-school vibes, vintage print';
   } else if (settings.style === 'watercolor') {
-    enhancedPrompt += ', watercolor painting style, soft blended colors, artistic brushstrokes, painted texture';
+    enhancedPrompt += ', watercolor painting style, soft blended colors, artistic brushstrokes, painted texture, fluid art';
   } else if (settings.style === 'geometric') {
-    enhancedPrompt += ', geometric art style, angular shapes, modern patterns, mathematical precision';
+    enhancedPrompt += ', geometric art style, angular shapes, modern patterns, mathematical precision, clean lines';
   } else if (settings.style === 'cyberpunk') {
-    enhancedPrompt += ', cyberpunk style, neon colors, futuristic tech aesthetic, digital art, glowing elements';
+    enhancedPrompt += ', cyberpunk style, neon colors, futuristic tech aesthetic, digital art, glowing elements, sci-fi design';
   }
   
-  // Add quality modifiers based on detail level
+  // Quality modifiers
   if (settings.detailLevel === 'high') {
-    enhancedPrompt += ', ultra detailed, masterpiece quality, professional artwork, intricate details, sharp focus';
+    enhancedPrompt += ', ultra detailed, masterpiece quality, professional artwork, intricate details, sharp focus, perfect execution';
   } else if (settings.detailLevel === 'medium') {
-    enhancedPrompt += ', detailed artwork, high quality design, professional finish';
+    enhancedPrompt += ', detailed artwork, high quality design, professional finish, clear details';
   } else {
-    enhancedPrompt += ', clean design, good quality';
+    enhancedPrompt += ', clean design, good quality, well-balanced composition';
   }
   
   // Always add textile-specific instructions
-  enhancedPrompt += ', suitable for textile printing, fashion design, apparel artwork, t-shirt design';
+  enhancedPrompt += ', optimized for textile printing, fashion design, apparel artwork, t-shirt design, fabric pattern, print-ready design';
   
   return enhancedPrompt;
 }

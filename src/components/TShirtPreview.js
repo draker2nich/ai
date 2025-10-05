@@ -3,8 +3,8 @@ import { RefreshCw, Download } from './Icons';
 import View3DSettings from './View3DSettings';
 import { makeSeamless, enhanceTexture, applyFabricTexture } from '../utils/textureUtils';
 
-// Lazy load 3D component - SWEATSHIRT instead of T-shirt
-const Sweatshirt3DViewer = lazy(() => import('./Sweatshirt3DViewer'));
+// Lazy load универсальный 3D загрузчик (GLTF/OBJ/FBX)
+const Sweatshirt3DLoader = lazy(() => import('./Sweatshirt3DLoader'));
 
 export default function TShirtPreview({ 
   design, 
@@ -27,11 +27,11 @@ export default function TShirtPreview({
     antialiasing: true,
     shadows: true,
     pixelRatio: 1.5,
-    ambientLight: 0.5,
-    directionalLight: 1.0,
+    ambientLight: 0.7,
+    directionalLight: 1.3,
     toneMappingExposure: 1.2,
-    roughness: 0.75,
-    metalness: 0.05,
+    roughness: 0.85,
+    metalness: 0.02,
     autoRotate: false,
     floatAnimation: true
   });
@@ -250,17 +250,16 @@ export default function TShirtPreview({
         {/* Mode Badge */}
         <div className="absolute top-4 right-4 bg-gradient-to-r from-purple-600/30 to-pink-600/30 backdrop-blur-sm px-4 py-2 rounded-xl border border-purple-500/30">
           <p className="text-xs text-purple-300 font-bold">
-            {visualizationMode === '3d' ? '✨ 3D Интерактивная модель' : '🖼️ 2D Предпросмотр'}
+            {visualizationMode === '3d' ? '✨ 3D Реальная модель' : '🖼️ 2D Предпросмотр'}
           </p>
         </div>
 
         {/* Render 2D or 3D view */}
         {visualizationMode === '2d' ? (
-          // 2D Preview - SWEATSHIRT with LONG SLEEVES
+          // 2D Preview
           <div className="relative w-80 h-96 z-10">
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="relative w-full h-full">
-                {/* Sweatshirt SVG with LONG SLEEVES */}
                 <svg viewBox="0 0 300 340" className="w-full h-full filter drop-shadow-2xl">
                   <defs>
                     <linearGradient id="sweatshirtGradient" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -276,103 +275,28 @@ export default function TShirtPreview({
                       <feComposite in2="SourceGraphic" operator="over" />
                     </filter>
                     <clipPath id="sweatshirtClip">
-                      <path d="M 95 60 
-                               L 95 85
-                               L 75 300
-                               L 225 300
-                               L 205 85
-                               L 205 60
-                               L 180 65
-                               Q 150 75 150 75
-                               Q 150 75 120 65
-                               Z" />
+                      <path d="M 95 60 L 95 85 L 75 300 L 225 300 L 205 85 L 205 60 L 180 65 Q 150 75 150 75 Q 150 75 120 65 Z" />
                     </clipPath>
                   </defs>
                   
                   <g filter="url(#fabricTexture)">
-                    {/* Long LEFT Sleeve */}
-                    <path
-                      d="M 95 60 L 75 75 L 20 95 L 10 195 L 15 200 L 30 150 L 95 85 Z"
-                      fill="url(#sweatshirtGradient)"
-                      stroke="#94a3b8"
-                      strokeWidth="1.5"
-                      opacity="0.95"
-                    />
-                    
-                    {/* Long RIGHT Sleeve */}
-                    <path
-                      d="M 205 60 L 225 75 L 280 95 L 290 195 L 285 200 L 270 150 L 205 85 Z"
-                      fill="url(#sweatshirtGradient)"
-                      stroke="#94a3b8"
-                      strokeWidth="1.5"
-                      opacity="0.95"
-                    />
-                    
-                    {/* Left Cuff (манжета) */}
-                    <ellipse cx="16" cy="195" rx="6" ry="10" 
-                      fill="#e8e8e8" 
-                      stroke="#94a3b8" 
-                      strokeWidth="1.2"
-                    />
-                    
-                    {/* Right Cuff */}
-                    <ellipse cx="284" cy="195" rx="6" ry="10" 
-                      fill="#e8e8e8" 
-                      stroke="#94a3b8" 
-                      strokeWidth="1.2"
-                    />
-                    
-                    {/* Main Body */}
-                    <path
-                      d="M 95 60 
-                         L 95 85
-                         L 75 300
-                         L 225 300
-                         L 205 85
-                         L 205 60
-                         L 180 65
-                         Q 150 75 150 75
-                         Q 150 75 120 65
-                         Z"
-                      fill="url(#sweatshirtGradient)"
-                      stroke="#94a3b8"
-                      strokeWidth="1.5"
-                    />
-                    
-                    {/* Round Collar */}
-                    <ellipse cx="150" cy="65" rx="45" ry="12" 
-                      fill="none" 
-                      stroke="#94a3b8" 
-                      strokeWidth="2"
-                    />
-                    
-                    {/* Bottom Hem (нижняя резинка) */}
-                    <rect x="75" y="297" width="150" height="8" rx="4"
-                      fill="#e8e8e8"
-                      stroke="#94a3b8"
-                      strokeWidth="1"
-                    />
+                    <path d="M 95 60 L 75 75 L 20 95 L 10 195 L 15 200 L 30 150 L 95 85 Z" fill="url(#sweatshirtGradient)" stroke="#94a3b8" strokeWidth="1.5" opacity="0.95"/>
+                    <path d="M 205 60 L 225 75 L 280 95 L 290 195 L 285 200 L 270 150 L 205 85 Z" fill="url(#sweatshirtGradient)" stroke="#94a3b8" strokeWidth="1.5" opacity="0.95"/>
+                    <ellipse cx="16" cy="195" rx="6" ry="10" fill="#e8e8e8" stroke="#94a3b8" strokeWidth="1.2"/>
+                    <ellipse cx="284" cy="195" rx="6" ry="10" fill="#e8e8e8" stroke="#94a3b8" strokeWidth="1.2"/>
+                    <path d="M 95 60 L 95 85 L 75 300 L 225 300 L 205 85 L 205 60 L 180 65 Q 150 75 150 75 Q 150 75 120 65 Z" fill="url(#sweatshirtGradient)" stroke="#94a3b8" strokeWidth="1.5"/>
+                    <ellipse cx="150" cy="65" rx="45" ry="12" fill="none" stroke="#94a3b8" strokeWidth="2"/>
+                    <rect x="75" y="297" width="150" height="8" rx="4" fill="#e8e8e8" stroke="#94a3b8" strokeWidth="1"/>
                   </g>
                   
-                  {/* Design Overlay with Clipping */}
                   <g clipPath="url(#sweatshirtClip)">
                     <foreignObject x="75" y="95" width="150" height="190">
                       <div className="w-full h-full flex items-center justify-center p-2">
-                        <img
-                          src={displayDesign.url}
-                          alt="Дизайн на кофте"
-                          className="w-full h-full object-cover"
-                          style={{
-                            opacity: 0.92,
-                            mixBlendMode: 'multiply',
-                            transform: viewMode === 'back' ? 'scaleX(-1)' : 'none'
-                          }}
-                        />
+                        <img src={displayDesign.url} alt="Дизайн на кофте" className="w-full h-full object-cover" style={{opacity: 0.92, mixBlendMode: 'multiply', transform: viewMode === 'back' ? 'scaleX(-1)' : 'none'}}/>
                       </div>
                     </foreignObject>
                   </g>
                   
-                  {/* Shadow */}
                   <ellipse cx="150" cy="310" rx="75" ry="10" fill="black" opacity="0.1" />
                 </svg>
                 
@@ -385,17 +309,17 @@ export default function TShirtPreview({
             </div>
           </div>
         ) : (
-          // 3D Preview - SWEATSHIRT
+          // 3D Preview - ВАША МОДЕЛЬ
           <div className="w-full h-full min-h-[500px]">
             <Suspense fallback={
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
                   <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                  <p className="text-purple-300">Загружаем 3D модель кофты...</p>
+                  <p className="text-purple-300">Загружаем вашу 3D модель...</p>
                 </div>
               </div>
             }>
-              <Sweatshirt3DViewer 
+              <Sweatshirt3DLoader 
                 designUrl={displayDesign.url} 
                 viewMode={viewMode}
                 settings={view3DSettings}
@@ -406,7 +330,7 @@ export default function TShirtPreview({
         
         {/* Quality Badge */}
         <div className="absolute bottom-4 right-4 text-xs text-purple-400 bg-black/50 backdrop-blur-sm px-3 py-2 rounded-xl border border-purple-500/30 font-medium">
-          {visualizationMode === '2d' ? '✨ Высокое качество предпросмотра' : '🎮 Интерактивный просмотр'}
+          {visualizationMode === '2d' ? '✨ 2D Предпросмотр' : '🎮 Интерактивная 3D модель'}
         </div>
       </div>
 

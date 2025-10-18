@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Settings, X } from './Icons';
 
-export default function View3DSettings({ settings, onSettingsChange, onClose }) {
+export default function View3DSettings({ settings, onSettingsChange }) {
   const [isOpen, setIsOpen] = useState(false);
 
   const handleChange = (key, value) => {
@@ -179,11 +179,11 @@ export default function View3DSettings({ settings, onSettingsChange, onClose }) 
                       antialiasing: true,
                       shadows: true,
                       pixelRatio: 1.5,
-                      ambientLight: 0.5,
-                      directionalLight: 1.0,
+                      ambientLight: 0.7,
+                      directionalLight: 1.3,
                       toneMappingExposure: 1.2,
-                      roughness: 0.75,
-                      metalness: 0.05,
+                      roughness: 0.85,
+                      metalness: 0.02,
                       autoRotate: false,
                       floatAnimation: true
                     });

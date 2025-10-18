@@ -1,2 +1,0 @@
-public/textures/sweatshirt_base.png filter=lfs diff=lfs merge=lfs -text
-public/models/sweatshirt.obj filter=lfs diff=lfs merge=lfs -text

@@ -1,19 +1,6 @@
 import React from 'react';
 import { Sparkles } from './Icons';
-
-// Примеры на английском для лучшей работы AI
-const EXAMPLE_PROMPTS = [
-  "vibrant sunset over ocean with dolphins jumping, pink and purple gradient sky, seamless pattern",
-  "abstract geometric Memphis style shapes, bright neon colors, repeating pattern, 80s aesthetic",
-  "tropical paradise with palm leaves and hibiscus flowers, watercolor painting style, seamless design",
-  "deep space nebula with stars and galaxies, dark blue and purple cosmos, tileable pattern",
-  "Japanese great wave in traditional ukiyo-e style, turquoise and white colors, seamless pattern",
-  "cyberpunk neon circuit board elements, black background with glowing lines, geometric pattern",
-  "vintage floral bouquet in 70s retro style, pastel earth tones, bohemian pattern",
-  "colorful mandala with intricate details, psychedelic art style, symmetrical design",
-  "minimal line art faces and abstract shapes, modern artistic pattern, black and white",
-  "holographic iridescent gradient, liquid metal effect, futuristic seamless texture"
-];
+import { EXAMPLE_PROMPTS } from '../constants';
 
 export default function PromptInput({ 
   prompt, 

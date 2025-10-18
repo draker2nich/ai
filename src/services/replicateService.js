@@ -1,82 +1,129 @@
 /**
- * Service for working with Replicate API through backend proxy
- * УЛУЧШЕНО: Более точные промпты для бесшовных паттернов
+ * Сервис для работы с Replicate API
+ * Оптимизированная версия с использованием констант
  */
 import config from '../config';
+import {
+  API_CONFIG,
+  INFERENCE_STEPS,
+  GUIDANCE_SCALE,
+  STYLE_MODIFIERS,
+  PATTERN_TYPES,
+  GENERATION_STAGES
+} from '../constants';
 
-const PROXY_API_URL = process.env.REACT_APP_PROXY_URL || 'http://localhost:3001/api';
-const SDXL_MODEL_VERSION = '39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b';
-
-const API_KEY = config.REPLICATE_API_KEY;
+const { PROXY_API_URL } = config;
+const { SDXL_MODEL_VERSION, MAX_VARIANTS } = API_CONFIG;
 
 /**
- * Create a prediction with enhanced prompts for seamless patterns
+ * Retry fetch с экспоненциальной задержкой
+ */
+async function fetchWithRetry(url, options, maxRetries = 3) {
+  let lastError;
+  
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const response = await fetch(url, options);
+      
+      if (response.status === 429) {
+        const waitTime = Math.pow(2, i) * 1000;
+        console.warn(`Rate limited, ожидание ${waitTime}ms перед повтором ${i + 1}/${maxRetries}`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        continue;
+      }
+      
+      return response;
+    } catch (error) {
+      lastError = error;
+      if (i < maxRetries - 1) {
+        const waitTime = Math.pow(2, i) * 1000;
+        console.warn(`Ошибка сети, повтор через ${waitTime}ms... (${i + 1}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+    }
+  }
+  
+  throw lastError || new Error('Превышено максимальное количество попыток');
+}
+
+/**
+ * Создание prediction
  */
 export async function createPrediction(prompt, settings = {}, seed = null) {
-  const enhancedPrompt = enhancePromptWithSettings(prompt, settings);
+  const apiKey = config.REPLICATE_API_KEY;
   
-  const inferenceSteps = settings.detailLevel === 'high' ? 40 : 
-                         settings.detailLevel === 'medium' ? 25 : 15;
-  
-  // УЛУЧШЕНО: Усиленный negative prompt для бесшовности
-  const negativePrompt = buildNegativePrompt(settings);
-  
-  const response = await fetch(`${PROXY_API_URL}/predictions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      apiKey: API_KEY,
-      version: SDXL_MODEL_VERSION,
-      input: {
-        prompt: enhancedPrompt,
-        negative_prompt: negativePrompt,
-        width: 1024,
-        height: 1024,
-        num_outputs: 1,
-        scheduler: "K_EULER",
-        num_inference_steps: inferenceSteps,
-        guidance_scale: settings.detailLevel === 'high' ? 8.5 : 7.5,
-        seed: seed || Math.floor(Math.random() * 1000000),
-        prompt_strength: 0.8,
-        refine: settings.detailLevel === 'high' ? 'expert_ensemble_refiner' : 'no_refiner'
-      }
-    })
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || error.error || 'Failed to create request');
+  if (!apiKey) {
+    throw new Error('API ключ не настроен');
   }
 
-  return await response.json();
+  const enhancedPrompt = enhancePrompt(prompt, settings);
+  const negativePrompt = buildNegativePrompt(settings);
+  const inferenceSteps = INFERENCE_STEPS[settings.detailLevel] || INFERENCE_STEPS.medium;
+  const guidanceScale = GUIDANCE_SCALE[settings.detailLevel] || GUIDANCE_SCALE.medium;
+  
+  try {
+    const response = await fetchWithRetry(`${PROXY_API_URL}/predictions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        apiKey: apiKey,
+        version: SDXL_MODEL_VERSION,
+        input: {
+          prompt: enhancedPrompt,
+          negative_prompt: negativePrompt,
+          width: API_CONFIG.DEFAULT_IMAGE_SIZE,
+          height: API_CONFIG.DEFAULT_IMAGE_SIZE,
+          num_outputs: 1,
+          scheduler: "K_EULER",
+          num_inference_steps: inferenceSteps,
+          guidance_scale: guidanceScale,
+          seed: seed || Math.floor(Math.random() * 1000000),
+          prompt_strength: 0.8,
+          refine: settings.detailLevel === 'high' ? 'expert_ensemble_refiner' : 'no_refiner'
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || error.error || `HTTP ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    throw new Error(`Не удалось создать prediction: ${error.message}`);
+  }
 }
 
 /**
- * Get prediction status
+ * Получение статуса prediction
  */
 export async function getPrediction(predictionId) {
-  const response = await fetch(`${PROXY_API_URL}/predictions/${predictionId}`, {
-    headers: {
-      'X-API-Key': API_KEY,
+  const apiKey = config.REPLICATE_API_KEY;
+  
+  try {
+    const response = await fetchWithRetry(`${PROXY_API_URL}/predictions/${predictionId}`, {
+      headers: { 'X-API-Key': apiKey }
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || `HTTP ${response.status}`);
     }
-  });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to get status');
+    return await response.json();
+  } catch (error) {
+    throw new Error(`Не удалось получить статус: ${error.message}`);
   }
-
-  return await response.json();
 }
 
 /**
- * Wait for prediction completion with progress tracking
+ * Ожидание завершения prediction
  */
 export async function waitForPrediction(predictionId, onProgress = null) {
   let attempts = 0;
   const maxAttempts = 120;
+  const startTime = Date.now();
   
   while (attempts < maxAttempts) {
     try {
@@ -84,23 +131,19 @@ export async function waitForPrediction(predictionId, onProgress = null) {
       
       let detailedStatus = {
         status: prediction.status,
-        stage: 'unknown',
+        stage: GENERATION_STAGES.WAITING,
         message: '',
         progress: 0
       };
 
       if (prediction.status === 'starting') {
-        detailedStatus.stage = 'starting';
-        detailedStatus.message = 'Initializing AI...';
+        detailedStatus.stage = GENERATION_STAGES.STARTING;
         detailedStatus.progress = 10;
       } else if (prediction.status === 'processing') {
-        const progressEstimate = Math.min(50 + (attempts * 2), 90);
-        detailedStatus.stage = 'generating';
-        detailedStatus.message = 'Creating design...';
-        detailedStatus.progress = progressEstimate;
+        detailedStatus.stage = GENERATION_STAGES.GENERATING;
+        detailedStatus.progress = Math.min(50 + (attempts * 2), 90);
       } else if (prediction.status === 'succeeded') {
-        detailedStatus.stage = 'completed';
-        detailedStatus.message = 'Design ready!';
+        detailedStatus.stage = GENERATION_STAGES.COMPLETED;
         detailedStatus.progress = 100;
         
         if (prediction.output && prediction.output[0]) {
@@ -108,144 +151,89 @@ export async function waitForPrediction(predictionId, onProgress = null) {
         }
       }
       
-      if (onProgress) {
-        onProgress(detailedStatus);
-      }
+      if (onProgress) onProgress(detailedStatus);
       
       if (prediction.status === 'succeeded') {
+        const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+        console.log(`✅ Prediction ${predictionId} завершён за ${duration}s`);
         return prediction;
       }
       
       if (prediction.status === 'failed') {
-        throw new Error(prediction.error || 'Generation failed');
+        throw new Error(prediction.error || 'Генерация не удалась');
       }
       
       if (prediction.status === 'canceled') {
-        throw new Error('Generation canceled');
+        throw new Error('Генерация отменена');
       }
     } catch (error) {
-      console.error('Error checking prediction status:', error);
-      if (attempts > 10) {
-        throw error;
-      }
+      if (attempts > 10) throw error;
     }
     
-    const waitTime = attempts < 10 ? 1000 : 2000;
-    await new Promise(resolve => setTimeout(resolve, waitTime));
+    await new Promise(resolve => setTimeout(resolve, attempts < 10 ? 1000 : 2000));
     attempts++;
   }
   
-  throw new Error('Generation timeout exceeded');
+  throw new Error('Превышено время ожидания (2 минуты)');
 }
 
 /**
- * Preload image
- */
-async function preloadImage(url) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = resolve;
-    img.onerror = reject;
-    img.src = url;
-  });
-}
-
-/**
- * Generate multiple design variants
+ * Генерация нескольких дизайнов параллельно
  */
 export async function generateDesigns(prompt, settings = {}, onProgressUpdate = null) {
-  const numberOfVariants = settings.numberOfVariants || 4;
-  console.log(`Starting parallel generation of ${numberOfVariants} variants...`);
+  const numberOfVariants = Math.min(settings.numberOfVariants || 4, MAX_VARIANTS);
+  console.log(`🎨 Запуск генерации ${numberOfVariants} вариантов...`);
   
   const imageStatuses = Array.from({ length: numberOfVariants }, (_, i) => ({
     index: i,
-    stage: 'creating',
-    message: 'Preparing...',
-    status: 'starting',
+    stage: GENERATION_STAGES.CREATING,
     progress: 0
   }));
   
   const updateProgress = () => {
-    if (onProgressUpdate) {
-      onProgressUpdate([...imageStatuses]);
-    }
+    if (onProgressUpdate) onProgressUpdate([...imageStatuses]);
   };
   
   try {
     updateProgress();
     
+    // Создаём все predictions параллельно
     const predictionPromises = Array.from({ length: numberOfVariants }, async (_, i) => {
-      console.log(`Sending request ${i + 1}/${numberOfVariants}`);
-      imageStatuses[i] = {
-        index: i,
-        stage: 'creating',
-        message: 'Sending to AI...',
-        status: 'starting',
-        progress: 5
-      };
+      imageStatuses[i] = { index: i, stage: GENERATION_STAGES.CREATING, progress: 5 };
       updateProgress();
       
       try {
         const seed = Math.floor(Math.random() * 1000000) + i * 1000;
         const prediction = await createPrediction(prompt, settings, seed);
-        imageStatuses[i] = {
-          index: i,
-          stage: 'waiting',
-          message: 'Processing...',
-          status: 'processing',
-          predictionId: prediction.id,
-          progress: 20
-        };
+        imageStatuses[i] = { index: i, stage: GENERATION_STAGES.WAITING, progress: 20, predictionId: prediction.id };
         updateProgress();
         return prediction;
       } catch (error) {
-        imageStatuses[i] = {
-          index: i,
-          stage: 'error',
-          message: `Error: ${error.message}`,
-          status: 'failed',
-          progress: 0
-        };
+        imageStatuses[i] = { index: i, stage: GENERATION_STAGES.ERROR, progress: 0 };
         updateProgress();
         throw error;
       }
     });
     
     const predictions = await Promise.all(predictionPromises);
-    console.log(`All ${numberOfVariants} requests created, waiting for generation...`);
     
+    // Ждём завершения
     const results = await Promise.all(
-      predictions.map((pred, index) => {
-        console.log(`Waiting for result ${index + 1}/${numberOfVariants} (ID: ${pred.id})`);
-        
-        return waitForPrediction(pred.id, (detailedStatus) => {
-          imageStatuses[index] = {
-            index: index,
-            stage: detailedStatus.stage,
-            message: detailedStatus.message,
-            status: detailedStatus.status,
-            predictionId: pred.id,
-            progress: detailedStatus.progress || 50
-          };
+      predictions.map((pred, index) => 
+        waitForPrediction(pred.id, (status) => {
+          imageStatuses[index] = { ...status, index };
           updateProgress();
-          console.log(`Image ${index + 1}: ${detailedStatus.message}`);
-        });
-      })
+        })
+      )
     );
     
-    console.log(`All ${numberOfVariants} images ready!`);
-    
-    imageStatuses.forEach((status, i) => {
-      imageStatuses[i] = {
-        ...status,
-        stage: 'completed',
-        message: 'Ready!',
-        status: 'succeeded',
-        progress: 100
-      };
+    // Отмечаем все как завершённые
+    imageStatuses.forEach((_, i) => {
+      imageStatuses[i] = { index: i, stage: GENERATION_STAGES.COMPLETED, progress: 100 };
     });
     updateProgress();
     
+    // Форматируем результаты
     return results
       .filter(result => result.output && result.output[0])
       .map((result, index) => ({
@@ -256,113 +244,79 @@ export async function generateDesigns(prompt, settings = {}, onProgressUpdate = 
         index: index
       }));
   } catch (error) {
-    console.error('Generation error:', error);
-    throw error;
+    console.error('❌ Ошибка генерации:', error);
+    throw new Error(`Не удалось сгенерировать дизайны: ${error.message}`);
   }
 }
 
 /**
- * УЛУЧШЕНО: Создание негативного промпта с учетом бесшовности
+ * Построение negative prompt
  */
 function buildNegativePrompt(settings = {}) {
   let negativePrompt = 'blurry, low quality, distorted, ugly, watermark, text, signature, logo, letters, words, bad anatomy, deformed, artifacts';
   
-  // Для бесшовных паттернов - усиленный negative prompt
-  if (settings.patternType === 'seamless') {
-    negativePrompt += ', visible seams, edge discontinuity, border artifacts, non-repeating pattern, asymmetric edges, mismatched borders, broken pattern at edges, seam lines, edge misalignment, incomplete pattern, cut-off elements at borders';
+  if (settings.patternType === PATTERN_TYPES.SEAMLESS) {
+    negativePrompt += ', visible seams, edge discontinuity, border artifacts, non-repeating pattern, mismatched borders';
   }
   
-  // Для геометрических - акцент на симметрию
-  if (settings.patternType === 'geometric' || settings.style === 'geometric') {
-    negativePrompt += ', asymmetric shapes, irregular patterns, uneven spacing, distorted geometry';
+  if (settings.patternType === PATTERN_TYPES.GEOMETRIC || settings.style === 'geometric') {
+    negativePrompt += ', asymmetric shapes, irregular patterns, uneven spacing';
   }
   
   return negativePrompt;
 }
 
 /**
- * УЛУЧШЕНО: Enhance prompt with BETTER seamless instructions
+ * Улучшение промпта с настройками
  */
-function enhancePromptWithSettings(prompt, settings = {}) {
-  let enhancedPrompt = prompt;
+function enhancePrompt(prompt, settings = {}) {
+  let enhanced = prompt;
   
-  // Translate common Russian words
-  const translations = {
-    'закат': 'sunset',
-    'океан': 'ocean',
-    'дельфин': 'dolphin',
-    'розовый': 'pink',
-    'фиолетовый': 'purple violet',
-    'синий': 'blue',
-    'красный': 'red',
-    'зеленый': 'green',
-    'желтый': 'yellow',
-    'черный': 'black',
-    'белый': 'white',
-    'цветы': 'flowers',
-    'листья': 'leaves',
-    'геометрический': 'geometric',
-    'абстрактный': 'abstract',
-    'узор': 'pattern',
-    'паттерн': 'pattern',
-    'звезды': 'stars',
-    'космос': 'space cosmos',
-    'туманность': 'nebula',
-    'галактика': 'galaxy'
-  };
-  
-  Object.keys(translations).forEach(russian => {
-    const regex = new RegExp(russian, 'gi');
-    enhancedPrompt = enhancedPrompt.replace(regex, translations[russian]);
-  });
-  
-  // КРИТИЧЕСКИ ВАЖНО: Добавляем СИЛЬНЫЕ инструкции для бесшовности
-  if (settings.patternType === 'seamless') {
-    enhancedPrompt += ', SEAMLESS REPEATING PATTERN, tileable texture, infinite pattern, edges match perfectly, continues at borders, no visible seams, wrap-around design, perfect tiling pattern, edge-to-edge continuity, repeatable textile design, symmetric borders, pattern loops seamlessly';
-    
-    // Дополнительный акцент для текстиля
-    enhancedPrompt += ', designed for textile printing, fabric pattern, all-over print, continuous repeat pattern';
-  } else if (settings.patternType === 'geometric') {
-    enhancedPrompt += ', SEAMLESS GEOMETRIC PATTERN, tileable mathematical shapes, perfect symmetry, repeating angular design, edge-to-edge match, geometric tessellation, modern abstract grid, symmetric borders';
-  } else if (settings.patternType === 'composition') {
-    enhancedPrompt += ', artistic composition, centered design, full print artwork, complete illustration, standalone image for textile';
+  // Добавляем инструкции для паттерна
+  if (settings.patternType === PATTERN_TYPES.SEAMLESS) {
+    enhanced += ', SEAMLESS REPEATING PATTERN, tileable texture, infinite pattern, edges match perfectly, wrap-around design, textile design';
+  } else if (settings.patternType === PATTERN_TYPES.GEOMETRIC) {
+    enhanced += ', SEAMLESS GEOMETRIC PATTERN, tileable shapes, perfect symmetry, repeating angular design, geometric tessellation';
+  } else if (settings.patternType === PATTERN_TYPES.COMPOSITION) {
+    enhanced += ', artistic composition, centered design, full print artwork, complete illustration';
   }
   
-  // Add style modifiers
-  if (settings.style === 'realistic') {
-    enhancedPrompt += ', photorealistic style, highly detailed, 8k quality, professional photography, crisp details';
-  } else if (settings.style === 'abstract') {
-    enhancedPrompt += ', abstract art style, modern design, artistic interpretation, contemporary art, flowing shapes';
-  } else if (settings.style === 'minimalist') {
-    enhancedPrompt += ', minimalist style, simple clean lines, negative space, elegant simplicity, refined design';
-  } else if (settings.style === 'vintage') {
-    enhancedPrompt += ', vintage retro style, nostalgic aesthetic, classic design, old-school vibes, vintage print';
-  } else if (settings.style === 'watercolor') {
-    enhancedPrompt += ', watercolor painting style, soft blended colors, artistic brushstrokes, painted texture, fluid art';
-  } else if (settings.style === 'geometric') {
-    enhancedPrompt += ', geometric art style, angular shapes, modern patterns, mathematical precision, clean lines';
-  } else if (settings.style === 'cyberpunk') {
-    enhancedPrompt += ', cyberpunk style, neon colors, futuristic tech aesthetic, digital art, glowing elements, sci-fi design';
+  // Добавляем модификатор стиля
+  if (settings.style && STYLE_MODIFIERS[settings.style]) {
+    enhanced += STYLE_MODIFIERS[settings.style];
   }
   
-  // Quality modifiers
+  // Качество по уровню детализации
   if (settings.detailLevel === 'high') {
-    enhancedPrompt += ', ultra detailed, masterpiece quality, professional artwork, intricate details, sharp focus, perfect execution';
+    enhanced += ', ultra detailed, masterpiece quality, professional artwork, intricate details';
   } else if (settings.detailLevel === 'medium') {
-    enhancedPrompt += ', detailed artwork, high quality design, professional finish, clear details';
+    enhanced += ', detailed artwork, high quality design, professional finish';
   } else {
-    enhancedPrompt += ', clean design, good quality, well-balanced composition';
+    enhanced += ', clean design, good quality';
   }
   
-  // Always add textile-specific instructions
-  enhancedPrompt += ', optimized for textile printing, fashion design, apparel artwork, t-shirt design, fabric pattern, print-ready design';
+  // Текстильные инструкции
+  enhanced += ', optimized for textile printing, fashion design, apparel artwork, print-ready';
   
-  return enhancedPrompt;
+  return enhanced;
 }
 
 /**
- * Check if API key is configured
+ * Предзагрузка изображения
+ */
+async function preloadImage(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = resolve;
+    img.onerror = () => reject(new Error('Не удалось загрузить изображение'));
+    img.src = url;
+  });
+}
+
+/**
+ * Проверка настройки API ключа
  */
 export function isApiKeyConfigured() {
-  return API_KEY && API_KEY !== 'r8_YOUR_ACTUAL_API_KEY_HERE' && API_KEY.startsWith('r8_');
+  const apiKey = config.REPLICATE_API_KEY;
+  return apiKey && apiKey.length > 0 && apiKey.startsWith('r8_');
 }

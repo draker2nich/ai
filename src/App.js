@@ -19,7 +19,6 @@ function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedDesigns, setGeneratedDesigns] = useState([]);
   const [selectedDesign, setSelectedDesign] = useState(null);
-  const [viewMode, setViewMode] = useState('front');
   const [error, setError] = useState('');
   const [imageStatuses, setImageStatuses] = useState([]);
   const [apiConfigured, setApiConfigured] = useState(false);
@@ -322,8 +321,6 @@ function App() {
               <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-purple-500/30 p-6 shadow-2xl">
                 <TShirtPreview
                   design={selectedDesign}
-                  viewMode={viewMode}
-                  onViewModeChange={setViewMode}
                   onRegenerate={handleGenerate}
                   onDownload={handleDownload}
                   onSave={handleSaveDesign}

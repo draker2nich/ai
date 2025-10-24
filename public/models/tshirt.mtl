@@ -1,0 +1,31 @@
+# MTL Exporter v1.0 by Seungwoo Oh at CLO - Virtual Fashion Inc.
+newmtl Knit_Cotton_Jersey_body_FRONT_2872
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.011800 0.011800 0.011800
+Ns 46.477551
+illum 2
+d 1.000000
+map_Ka Z:/DDD/0.Portfolio/MOCUP/PR/82201002117687A_COL_white_124435.jpg
+map_Kd Z:/DDD/0.Portfolio/MOCUP/PR/82201002117687A_COL_white_124435.jpg
+map_bump Z:/DDD/0.Portfolio/MOCUP/PR/82201002117687A_NRM_124437.jpg
+newmtl Rib_2X2_468gsm_FRONT_2884
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.010000 0.010000 0.010000
+Ns 28.763239
+illum 2
+d 1.000000
+map_Ka Z:/DDD/0.Portfolio/MOCUP/PR/Withe_Rib_COL_124479.jpg
+map_Kd Z:/DDD/0.Portfolio/MOCUP/PR/Withe_Rib_COL_124479.jpg
+map_bump Z:/DDD/0.Portfolio/MOCUP/PR/Grey_Rib_NRM_124481.jpg
+newmtl Knit_Cotton_Jersey_body_BACK_2872
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.088500 0.088500 0.088500
+Ns 46.477551
+illum 2
+d 1.000000
+map_Ka Z:/DDD/0.Portfolio/MOCUP/PR/Cotton_Rayon Jersey_FCL1PSK003_test3_COL_124442.jpg
+map_Kd Z:/DDD/0.Portfolio/MOCUP/PR/Cotton_Rayon Jersey_FCL1PSK003_test3_COL_124442.jpg
+map_bump Z:/DDD/0.Portfolio/MOCUP/PR/Cotton_Rayon Jersey_FCL1PSK003_test3_NRM_124444.jpg

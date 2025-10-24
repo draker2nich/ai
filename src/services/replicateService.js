@@ -121,13 +121,13 @@ export async function getPrediction(predictionId) {
  * Ожидание завершения prediction
  */
 export async function waitForPrediction(predictionId, onProgress = null) {
-  let attempts = 0;
   const maxAttempts = 120;
   const startTime = Date.now();
   
-  while (attempts < maxAttempts) {
+  for (let attempts = 0; attempts < maxAttempts; attempts++) {
     try {
       const prediction = await getPrediction(predictionId);
+      const currentAttempts = attempts; // Копия для использования в замыкании
       
       let detailedStatus = {
         status: prediction.status,
@@ -141,7 +141,7 @@ export async function waitForPrediction(predictionId, onProgress = null) {
         detailedStatus.progress = 10;
       } else if (prediction.status === 'processing') {
         detailedStatus.stage = GENERATION_STAGES.GENERATING;
-        detailedStatus.progress = Math.min(50 + (attempts * 2), 90);
+        detailedStatus.progress = Math.min(50 + (currentAttempts * 2), 90);
       } else if (prediction.status === 'succeeded') {
         detailedStatus.stage = GENERATION_STAGES.COMPLETED;
         detailedStatus.progress = 100;
@@ -171,7 +171,6 @@ export async function waitForPrediction(predictionId, onProgress = null) {
     }
     
     await new Promise(resolve => setTimeout(resolve, attempts < 10 ? 1000 : 2000));
-    attempts++;
   }
   
   throw new Error('Превышено время ожидания (2 минуты)');

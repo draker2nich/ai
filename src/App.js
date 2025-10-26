@@ -1,11 +1,18 @@
+/**
+ * Главный компонент приложения
+ * Управляет состоянием и координирует работу всех компонентов
+ */
 import React, { useState, useEffect } from 'react';
-import { Shirt, Sparkles } from './components/Icons';
 import BackgroundCanvas from './components/BackgroundCanvas';
 import FloatingUI from './components/FloatingUI';
 import { generateDesigns, isApiKeyConfigured } from './services/replicateService';
 import { saveDesign, getSavedDesigns, deleteDesign } from './utils/storageService';
+import { useLanguage } from './locales/LanguageContext';
 
 function App() {
+  const { t } = useLanguage();
+  
+  // Состояние промпта и настроек
   const [prompt, setPrompt] = useState('');
   const [settings, setSettings] = useState({
     patternType: 'seamless',
@@ -13,38 +20,45 @@ function App() {
     numberOfVariants: 4,
     detailLevel: 'medium'
   });
+  
+  // Состояние генерации
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedDesigns, setGeneratedDesigns] = useState([]);
   const [selectedDesign, setSelectedDesign] = useState(null);
   const [error, setError] = useState('');
   const [imageStatuses, setImageStatuses] = useState([]);
+  
+  // Конфигурация и сохранённые дизайны
   const [apiConfigured, setApiConfigured] = useState(false);
   const [savedDesigns, setSavedDesigns] = useState([]);
   const [showSaved, setShowSaved] = useState(false);
   const [uiVisible, setUiVisible] = useState(true);
 
+  // Проверка API ключа при загрузке
   useEffect(() => {
     const configured = isApiKeyConfigured();
     setApiConfigured(configured);
     if (!configured) {
-      setError('Пожалуйста, настройте API ключ в файле .env');
+      setError(t.errors.noApiKey);
     }
     loadSavedDesigns();
-  }, []);
+  }, [t.errors.noApiKey]);
 
+  // Загрузка сохранённых дизайнов
   const loadSavedDesigns = () => {
     const designs = getSavedDesigns();
     setSavedDesigns(designs);
   };
 
+  // Обработчик генерации дизайнов
   const handleGenerate = async () => {
     if (!apiConfigured) {
-      setError('API ключ не настроен. Пожалуйста, добавьте REACT_APP_REPLICATE_API_KEY в файл .env');
+      setError(t.errors.noApiKey);
       return;
     }
 
     if (!prompt.trim()) {
-      setError('Пожалуйста, введите описание дизайна');
+      setError(t.errors.emptyPrompt);
       return;
     }
 
@@ -64,7 +78,7 @@ function App() {
       );
       
       if (designs.length === 0) {
-        throw new Error('Не удалось сгенерировать дизайны');
+        throw new Error(t.errors.generationFailed);
       }
 
       setGeneratedDesigns(designs);
@@ -72,13 +86,14 @@ function App() {
       setImageStatuses([]);
     } catch (err) {
       console.error('Ошибка генерации:', err);
-      setError(err.message || 'Не удалось сгенерировать дизайны. Попробуйте ещё раз.');
+      setError(err.message || t.errors.generationFailed);
       setImageStatuses([]);
     } finally {
       setIsGenerating(false);
     }
   };
 
+  // Сохранение дизайна
   const handleSaveDesign = () => {
     if (!selectedDesign) return;
     
@@ -90,13 +105,14 @@ function App() {
       });
       
       loadSavedDesigns();
-      showNotification('Дизайн сохранён!', 'success');
+      showNotification(t.notifications.saved, 'success');
     } catch (err) {
       console.error('Ошибка сохранения:', err);
-      setError('Не удалось сохранить дизайн');
+      setError(t.errors.saveFailed);
     }
   };
 
+  // Загрузка дизайна из сохранённых
   const handleLoadDesign = (design) => {
     setPrompt(design.prompt || '');
     setSettings(design.settings || settings);
@@ -105,12 +121,14 @@ function App() {
     setShowSaved(false);
   };
 
+  // Удаление дизайна
   const handleDeleteDesign = (designId) => {
     deleteDesign(designId);
     loadSavedDesigns();
-    showNotification('Дизайн удалён', 'info');
+    showNotification(t.notifications.deleted, 'info');
   };
 
+  // Скачивание дизайна
   const handleDownload = async () => {
     if (!selectedDesign) return;
 
@@ -125,13 +143,14 @@ function App() {
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-      showNotification('Дизайн скачан!', 'success');
+      showNotification(t.notifications.downloaded, 'success');
     } catch (err) {
       console.error('Ошибка скачивания:', err);
-      setError('Не удалось скачать изображение');
+      setError(t.errors.downloadFailed);
     }
   };
 
+  // Показ уведомления
   const showNotification = (message, type = 'success') => {
     const notification = document.createElement('div');
     const bgColor = type === 'success' ? 'bg-green-600' : 
@@ -157,13 +176,13 @@ function App() {
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-black">
-      {/* 3D Canvas Background */}
+      {/* 3D фон с моделью */}
       <BackgroundCanvas 
         design={selectedDesign}
         isVisible={!showSaved}
       />
 
-      {/* Floating UI */}
+      {/* Плавающий интерфейс */}
       <FloatingUI
         prompt={prompt}
         onPromptChange={setPrompt}

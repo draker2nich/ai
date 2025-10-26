@@ -1,9 +1,15 @@
+/**
+ * Компонент 3D фона с моделью одежды
+ * Отображает интерактивную 3D сцену с возможностью вращения камеры
+ */
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { loadTShirtModel } from '../utils/modelLoader';
+import { useLanguage } from '../locales/LanguageContext';
 
 export default function BackgroundCanvas({ design, isVisible }) {
+  const { t } = useLanguage();
   const containerRef = useRef(null);
   const sceneRef = useRef(null);
   const cameraRef = useRef(null);
@@ -16,23 +22,24 @@ export default function BackgroundCanvas({ design, isVisible }) {
   useEffect(() => {
     if (!containerRef.current) return;
 
-    console.log('🎬 Инициализация фонового 3D canvas...');
+    console.log('Инициализация фонового 3D canvas');
 
-    // Создаём сцену
+    // Создание сцены
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0a0a0a);
     scene.fog = new THREE.Fog(0x0a0a0a, 50, 200);
     sceneRef.current = scene;
 
-    // Камера - направлена на точку ниже центра для опущенной модели
+    // Камера - улучшенное позиционирование для лучшего обзора модели
     const camera = new THREE.PerspectiveCamera(
-      45,
+      60,
       window.innerWidth / window.innerHeight,
       0.1,
       1000
     );
-    camera.position.set(0, 10, 80);
-    camera.lookAt(0, -10, 0);
+    // Камера расположена выше и ближе для лучшего обзора
+    camera.position.set(53, 0, 78);
+    camera.lookAt(0, 0, 0);
     cameraRef.current = camera;
 
     // Рендерер
@@ -50,7 +57,7 @@ export default function BackgroundCanvas({ design, isVisible }) {
     containerRef.current.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
-    // Освещение - более кинематографичное
+    // Освещение - кинематографичное с мягкими тенями
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
     scene.add(ambientLight);
 
@@ -71,12 +78,12 @@ export default function BackgroundCanvas({ design, isVisible }) {
     rimLight.position.set(0, 50, -100);
     scene.add(rimLight);
 
-    // Подсветка снизу
+    // Подсветка снизу для атмосферы
     const bottomLight = new THREE.PointLight(0x6366f1, 0.5);
-    bottomLight.position.set(0, -30, 0);
+    bottomLight.position.set(0, -20, 0);
     scene.add(bottomLight);
 
-    // Частицы в фоне для атмосферы
+    // Частицы в фоне для глубины
     const particlesGeometry = new THREE.BufferGeometry();
     const particlesCount = 1000;
     const positions = new Float32Array(particlesCount * 3);
@@ -96,7 +103,7 @@ export default function BackgroundCanvas({ design, isVisible }) {
     const particles = new THREE.Points(particlesGeometry, particlesMaterial);
     scene.add(particles);
 
-    // Контролы - target направлен ниже для опущенной модели
+    // Контролы камеры - оптимизированы для удобного просмотра
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
@@ -106,10 +113,11 @@ export default function BackgroundCanvas({ design, isVisible }) {
     controls.enablePan = false;
     controls.autoRotate = true;
     controls.autoRotateSpeed = 0.5;
-    controls.target.set(0, -10, 0);
+    // Центр вращения находится в центре, модель будет опущена ниже
+    controls.target.set(0, 0, 0);
     controlsRef.current = controls;
 
-    // Платформа под футболкой - опускаем ниже
+    // Платформа под моделью - опущена ниже для правильной композиции
     const platformGeometry = new THREE.CylinderGeometry(25, 25, 1, 32);
     const platformMaterial = new THREE.MeshStandardMaterial({
       color: 0x1a1a2e,
@@ -119,11 +127,11 @@ export default function BackgroundCanvas({ design, isVisible }) {
       emissiveIntensity: 0.1
     });
     const platform = new THREE.Mesh(platformGeometry, platformMaterial);
-    platform.position.y = -35;
+    platform.position.y = -30; // Опущена ниже для лучшей композиции
     platform.receiveShadow = true;
     scene.add(platform);
 
-    // Световое кольцо - опускаем вместе с платформой
+    // Световое кольцо вокруг платформы
     const ringGeometry = new THREE.TorusGeometry(26, 0.2, 16, 100);
     const ringMaterial = new THREE.MeshBasicMaterial({
       color: 0x9333ea,
@@ -131,7 +139,7 @@ export default function BackgroundCanvas({ design, isVisible }) {
       opacity: 0.8
     });
     const ring = new THREE.Mesh(ringGeometry, ringMaterial);
-    ring.position.y = -34.5;
+    ring.position.y = -29.5;
     ring.rotation.x = Math.PI / 2;
     scene.add(ring);
 
@@ -144,20 +152,22 @@ export default function BackgroundCanvas({ design, isVisible }) {
           defaultTexture,
           (progress) => console.log(`Загрузка модели: ${progress}%`),
           (model) => {
+            // Модель позиционируется ниже для лучшего обзора
+            model.position.y = -75; // Опущена ниже от центра
             scene.add(model);
             tshirtRef.current = model;
             setIsLoading(false);
-            console.log('✅ Модель футболки загружена');
+            console.log('Модель футболки загружена успешно');
           },
           (error) => {
-            console.error('❌ Ошибка загрузки модели:', error);
+            console.error('Ошибка загрузки модели:', error);
             setIsLoading(false);
           }
         );
       }
     );
 
-    // Анимация
+    // Цикл анимации
     let time = 0;
     const animate = () => {
       requestAnimationFrame(animate);
@@ -169,9 +179,9 @@ export default function BackgroundCanvas({ design, isVisible }) {
       // Пульсация кольца
       ring.material.opacity = 0.6 + Math.sin(time * 2) * 0.2;
       
-      // Плавное покачивание футболки - опущенная позиция
+      // Плавное покачивание модели
       if (tshirtRef.current) {
-        tshirtRef.current.position.y = -10 + Math.sin(time) * 1;
+        tshirtRef.current.position.y = -75 + Math.sin(time) * 1;
         tshirtRef.current.rotation.y += 0.002;
       }
 
@@ -180,7 +190,7 @@ export default function BackgroundCanvas({ design, isVisible }) {
     };
     animate();
 
-    // Обработка изменения размера
+    // Обработка изменения размера окна
     const handleResize = () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
@@ -188,7 +198,7 @@ export default function BackgroundCanvas({ design, isVisible }) {
     };
     window.addEventListener('resize', handleResize);
 
-    // Очистка
+    // Очистка при размонтировании
     return () => {
       window.removeEventListener('resize', handleResize);
       if (containerRef.current && renderer.domElement) {
@@ -213,13 +223,13 @@ export default function BackgroundCanvas({ design, isVisible }) {
   useEffect(() => {
     if (!design || !tshirtRef.current) return;
 
-    console.log('🎨 Обновление текстуры дизайна...');
+    console.log('Обновление текстуры дизайна');
     
     const textureLoader = new THREE.TextureLoader();
     textureLoader.load(
       design.url,
       (texture) => {
-        // Очищаем старую текстуру
+        // Очистка старой текстуры
         if (currentTextureRef.current) {
           currentTextureRef.current.dispose();
         }
@@ -235,11 +245,11 @@ export default function BackgroundCanvas({ design, isVisible }) {
         });
 
         currentTextureRef.current = texture;
-        console.log('✅ Текстура обновлена');
+        console.log('Текстура обновлена успешно');
       },
       undefined,
       (error) => {
-        console.error('❌ Ошибка загрузки текстуры:', error);
+        console.error('Ошибка загрузки текстуры:', error);
       }
     );
   }, [design]);
@@ -254,8 +264,8 @@ export default function BackgroundCanvas({ design, isVisible }) {
         <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm z-10">
           <div className="text-center">
             <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-white font-bold text-lg">Загрузка 3D сцены...</p>
-            <p className="text-purple-400 text-sm mt-2">Подготовка виртуальной студии</p>
+            <p className="text-white font-bold text-lg">{t.viewer.loading}</p>
+            <p className="text-purple-400 text-sm mt-2">{t.viewer.preparing}</p>
           </div>
         </div>
       )}

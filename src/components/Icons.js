@@ -1,3 +1,7 @@
+/**
+ * Компоненты иконок SVG
+ * Переиспользуемые иконки для интерфейса
+ */
 import React from 'react';
 
 export const Sparkles = ({ className = "w-5 h-5" }) => (

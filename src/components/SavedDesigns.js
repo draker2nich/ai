@@ -1,7 +1,14 @@
+/**
+ * Компонент модального окна с сохранёнными дизайнами
+ * Отображает галерею всех сохранённых пользователем дизайнов
+ */
 import React from 'react';
 import { X } from './Icons';
+import { useLanguage } from '../locales/LanguageContext';
 
 export default function SavedDesigns({ designs, onLoad, onDelete, onClose }) {
+  const { t } = useLanguage();
+
   const formatDate = (timestamp) => {
     const date = new Date(timestamp);
     const now = new Date();
@@ -10,19 +17,19 @@ export default function SavedDesigns({ designs, onLoad, onDelete, onClose }) {
     // Менее часа назад
     if (diff < 3600000) {
       const minutes = Math.floor(diff / 60000);
-      return `${minutes} мин. назад`;
+      return `${minutes} ${t.savedDesigns.timeAgo.minutes}`;
     }
     
     // Менее суток назад
     if (diff < 86400000) {
       const hours = Math.floor(diff / 3600000);
-      return `${hours} ч. назад`;
+      return `${hours} ${t.savedDesigns.timeAgo.hours}`;
     }
     
     // Менее недели назад
     if (diff < 604800000) {
       const days = Math.floor(diff / 86400000);
-      return `${days} д. назад`;
+      return `${days} ${t.savedDesigns.timeAgo.days}`;
     }
     
     // Иначе показываем дату
@@ -34,7 +41,7 @@ export default function SavedDesigns({ designs, onLoad, onDelete, onClose }) {
   };
 
   const truncatePrompt = (text, maxLength = 60) => {
-    if (!text) return 'Без описания';
+    if (!text) return t.savedDesigns.noDescription;
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + '...';
   };
@@ -47,12 +54,12 @@ export default function SavedDesigns({ designs, onLoad, onDelete, onClose }) {
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl flex items-center justify-center">
               <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
+                <path d="M5 4a2 2 0 012-2h6a2 2 0 012 4v14l-5-2.5L5 18V4z" />
               </svg>
             </div>
             <div>
-              <h3 className="text-lg font-bold text-white">Сохранённые дизайны</h3>
-              <p className="text-xs text-purple-400">Всего: {designs.length}</p>
+              <h3 className="text-lg font-bold text-white">{t.savedDesigns.title}</h3>
+              <p className="text-xs text-purple-400">{t.savedDesigns.total}: {designs.length}</p>
             </div>
           </div>
           <button
@@ -72,9 +79,9 @@ export default function SavedDesigns({ designs, onLoad, onDelete, onClose }) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
                 </svg>
               </div>
-              <p className="text-xl font-bold text-white mb-2">Пока нет сохранённых дизайнов</p>
+              <p className="text-xl font-bold text-white mb-2">{t.savedDesigns.empty}</p>
               <p className="text-sm text-purple-300">
-                Создайте дизайн и нажмите кнопку "Сохранить", чтобы он появился здесь
+                {t.savedDesigns.emptyHint}
               </p>
             </div>
           ) : (
@@ -103,12 +110,12 @@ export default function SavedDesigns({ designs, onLoad, onDelete, onClose }) {
                           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
                           </svg>
-                          Загрузить
+                          {t.savedDesigns.load}
                         </button>
                         <button
                           onClick={() => onDelete(design.id)}
                           className="py-2 px-3 bg-red-600/80 hover:bg-red-600 text-white text-sm font-semibold rounded-lg transition-all"
-                          title="Удалить"
+                          title={t.savedDesigns.delete}
                         >
                           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />

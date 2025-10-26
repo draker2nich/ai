@@ -1,7 +1,12 @@
+/**
+ * Плавающий интерфейс пользователя
+ * Включает панели управления и галерею сгенерированных дизайнов
+ */
 import React from 'react';
 import { Sparkles, Download, X } from './Icons';
 import { EXAMPLE_PROMPTS } from '../constants';
 import SavedDesigns from './SavedDesigns';
+import { useLanguage } from '../locales/LanguageContext';
 
 export default function FloatingUI({
   prompt,
@@ -27,9 +32,11 @@ export default function FloatingUI({
   uiVisible,
   onToggleUI
 }) {
+  const { t, language, changeLanguage } = useLanguage();
+
   return (
     <>
-      {/* Header Bar */}
+      {/* Шапка сайта */}
       <div className="fixed top-0 left-0 right-0 z-40 bg-black/40 backdrop-blur-xl border-b border-purple-500/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -43,12 +50,36 @@ export default function FloatingUI({
             </div>
             <div>
               <h1 className="text-lg font-black bg-gradient-to-r from-purple-400 via-pink-400 to-violet-400 bg-clip-text text-transparent">
-                AI Fashion Studio
+                {t.appTitle}
               </h1>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Переключатель языка */}
+            <div className="flex items-center gap-1 bg-purple-600/30 rounded-lg border border-purple-500/30 p-1">
+              <button
+                onClick={() => changeLanguage('ru')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded transition-all ${
+                  language === 'ru' 
+                    ? 'bg-purple-600 text-white' 
+                    : 'text-purple-200 hover:text-white'
+                }`}
+              >
+                RU
+              </button>
+              <button
+                onClick={() => changeLanguage('en')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded transition-all ${
+                  language === 'en' 
+                    ? 'bg-purple-600 text-white' 
+                    : 'text-purple-200 hover:text-white'
+                }`}
+              >
+                EN
+              </button>
+            </div>
+
             {savedDesigns.length > 0 && (
               <button
                 onClick={onShowSavedToggle}
@@ -57,14 +88,14 @@ export default function FloatingUI({
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
                 </svg>
-                <span className="hidden sm:inline">Saved ({savedDesigns.length})</span>
+                <span className="hidden sm:inline">{t.nav.saved} ({savedDesigns.length})</span>
               </button>
             )}
 
             <button
               onClick={onToggleUI}
               className="w-10 h-10 flex items-center justify-center bg-purple-600/30 hover:bg-purple-600/50 rounded-lg border border-purple-500/30 transition-all"
-              title={uiVisible ? "Hide UI" : "Show UI"}
+              title={uiVisible ? t.nav.hideUI : t.nav.showUI}
             >
               {uiVisible ? (
                 <svg className="w-5 h-5 text-purple-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -81,22 +112,22 @@ export default function FloatingUI({
         </div>
       </div>
 
-      {/* Main UI Panels */}
+      {/* Основные панели интерфейса */}
       <div className={`fixed inset-0 z-30 pointer-events-none transition-opacity duration-300 ${uiVisible ? 'opacity-100' : 'opacity-0'}`}>
         <div className="h-full flex items-stretch p-4 pt-20 pb-4 gap-4">
-          {/* Left Panel - Generation Controls */}
+          {/* Левая панель - управление генерацией */}
           <div className="w-96 flex flex-col gap-4 pointer-events-auto">
-            {/* Prompt Input Card */}
+            {/* Карточка ввода промпта */}
             <div className="bg-black/60 backdrop-blur-xl border border-purple-500/30 rounded-2xl p-6 shadow-2xl">
               <div className="flex items-center gap-2 mb-4">
                 <Sparkles className="w-5 h-5 text-purple-400" />
-                <h2 className="text-sm font-bold text-purple-300">Create Design</h2>
+                <h2 className="text-sm font-bold text-purple-300">{t.create.title}</h2>
               </div>
 
               <textarea
                 value={prompt}
                 onChange={(e) => onPromptChange(e.target.value)}
-                placeholder="Describe your design..."
+                placeholder={t.create.placeholder}
                 rows="4"
                 disabled={!apiConfigured}
                 className="w-full px-4 py-3 text-sm bg-black/50 border-2 border-purple-500/30 rounded-xl text-white placeholder-purple-400/50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none disabled:opacity-50 disabled:cursor-not-allowed transition-all mb-3"
@@ -110,20 +141,20 @@ export default function FloatingUI({
                 {isGenerating ? (
                   <>
                     <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin" />
-                    Generating...
+                    {t.create.generating}
                   </>
                 ) : (
                   <>
                     <Sparkles className="w-5 h-5" />
-                    Generate Designs
+                    {t.create.generate}
                   </>
                 )}
               </button>
 
-              {/* Quick Prompts */}
+              {/* Быстрые промпты */}
               <div className="mt-4 space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
                 <p className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-2">
-                  Quick Ideas
+                  {t.create.quickIdeas}
                 </p>
                 {EXAMPLE_PROMPTS.slice(0, 5).map((example, idx) => (
                   <button
@@ -138,14 +169,14 @@ export default function FloatingUI({
               </div>
             </div>
 
-            {/* Settings Card */}
+            {/* Карточка настроек */}
             <div className="bg-black/60 backdrop-blur-xl border border-purple-500/30 rounded-2xl p-6 shadow-2xl">
-              <h3 className="text-sm font-bold text-purple-300 mb-4">Settings</h3>
+              <h3 className="text-sm font-bold text-purple-300 mb-4">{t.settings.title}</h3>
               
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-purple-400 mb-2">
-                    Style
+                    {t.settings.style}
                   </label>
                   <select 
                     value={settings.style}
@@ -153,17 +184,17 @@ export default function FloatingUI({
                     disabled={isGenerating}
                     className="w-full px-3 py-2 text-sm bg-black/50 border-2 border-purple-500/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                   >
-                    <option value="realistic">Realistic</option>
-                    <option value="abstract">Abstract</option>
-                    <option value="minimalist">Minimalist</option>
-                    <option value="vintage">Vintage</option>
-                    <option value="cyberpunk">Cyberpunk</option>
+                    <option value="realistic">{t.settings.styles.realistic}</option>
+                    <option value="abstract">{t.settings.styles.abstract}</option>
+                    <option value="minimalist">{t.settings.styles.minimalist}</option>
+                    <option value="vintage">{t.settings.styles.vintage}</option>
+                    <option value="cyberpunk">{t.settings.styles.cyberpunk}</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-purple-400 mb-2">
-                    Variants: {settings.numberOfVariants}
+                    {t.settings.variants}: {settings.numberOfVariants}
                   </label>
                   <input
                     type="range"
@@ -179,68 +210,80 @@ export default function FloatingUI({
             </div>
           </div>
 
-          {/* Right Panel - Generated Designs Gallery */}
+          {/* Правая панель - галерея дизайнов */}
           {generatedDesigns.length > 0 && (
-            <div className="w-96 ml-auto flex flex-col gap-4 pointer-events-auto">
-              {/* Gallery Card */}
-              <div className="bg-black/60 backdrop-blur-xl border border-purple-500/30 rounded-2xl p-6 shadow-2xl flex-1 overflow-hidden flex flex-col">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-bold text-purple-300">Generated Designs</h3>
-                  <span className="text-xs font-semibold px-3 py-1 bg-purple-600/30 text-purple-300 rounded-full">
-                    {generatedDesigns.length}
-                  </span>
+            <div className="w-[420px] ml-auto flex flex-col pointer-events-auto">
+              {/* Карточка галереи */}
+              <div className="bg-black/60 backdrop-blur-xl border border-purple-500/30 rounded-2xl shadow-2xl flex flex-col max-h-[calc(100vh-120px)]">
+                <div className="p-6 border-b border-purple-500/20">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-purple-300">{t.gallery.title}</h3>
+                    <span className="text-xs font-semibold px-3 py-1 bg-purple-600/30 text-purple-300 rounded-full">
+                      {generatedDesigns.length}
+                    </span>
+                  </div>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-3 overflow-y-auto custom-scrollbar flex-1">
-                  {generatedDesigns.map((design) => (
-                    <button
-                      key={design.id}
-                      onClick={() => onSelectDesign(design)}
-                      className={`relative rounded-xl overflow-hidden border-2 transition-all group ${
-                        selectedDesign?.id === design.id
-                          ? 'border-purple-500 ring-4 ring-purple-500/30 scale-105'
-                          : 'border-purple-500/20 hover:border-purple-400/50 hover:scale-102'
-                      }`}
-                    >
-                      <div className="aspect-square bg-black">
-                        <img
-                          src={design.url}
-                          alt={`Design ${design.index + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      
-                      {selectedDesign?.id === design.id && (
-                        <div className="absolute top-2 right-2 w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center">
-                          <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
+                {/* Сетка дизайнов с прокруткой */}
+                <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                  <div className="grid grid-cols-2 gap-3">
+                    {generatedDesigns.map((design) => (
+                      <button
+                        key={design.id}
+                        onClick={() => onSelectDesign(design)}
+                        className={`relative rounded-xl overflow-hidden border-2 transition-all group ${
+                          selectedDesign?.id === design.id
+                            ? 'border-purple-500 ring-4 ring-purple-500/30 scale-105'
+                            : 'border-purple-500/20 hover:border-purple-400/50 hover:scale-102'
+                        }`}
+                      >
+                        <div className="aspect-square bg-black">
+                          <img
+                            src={design.url}
+                            alt={`Design ${design.index + 1}`}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
                         </div>
-                      )}
-                    </button>
-                  ))}
+                        
+                        {selectedDesign?.id === design.id && (
+                          <div className="absolute top-2 right-2 w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center shadow-lg">
+                            <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        )}
+                        
+                        <div className="absolute bottom-2 left-2 bg-black/80 backdrop-blur-sm px-2 py-1 rounded text-xs font-bold text-white">
+                          #{design.index + 1}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
-                {/* Action Buttons */}
+                {/* Кнопки действий */}
                 {selectedDesign && (
-                  <div className="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-purple-500/20">
-                    <button
-                      onClick={onSave}
-                      className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600/80 hover:bg-green-600 text-white rounded-lg font-semibold transition-all text-sm"
-                    >
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
-                      </svg>
-                      Save
-                    </button>
-                    
-                    <button
-                      onClick={onDownload}
-                      className="flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-all text-sm"
-                    >
-                      <Download className="w-4 h-4" />
-                      Download
-                    </button>
+                  <div className="p-6 border-t border-purple-500/20">
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={onSave}
+                        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600/80 hover:bg-green-600 text-white rounded-lg font-semibold transition-all text-sm"
+                      >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
+                        </svg>
+                        {t.gallery.save}
+                      </button>
+                      
+                      <button
+                        onClick={onDownload}
+                        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-all text-sm"
+                      >
+                        <Download className="w-4 h-4" />
+                        {t.gallery.download}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -249,7 +292,7 @@ export default function FloatingUI({
         </div>
       </div>
 
-      {/* Error Notification */}
+      {/* Уведомление об ошибке */}
       {error && (
         <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 max-w-md w-full mx-4 pointer-events-auto">
           <div className="bg-red-900/90 backdrop-blur-xl border border-red-500/50 text-red-100 px-4 py-3 rounded-xl flex items-start gap-3 shadow-2xl">
@@ -266,15 +309,15 @@ export default function FloatingUI({
         </div>
       )}
 
-      {/* Generation Progress */}
+      {/* Индикатор процесса генерации */}
       {isGenerating && (
         <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 pointer-events-auto">
           <div className="bg-black/90 backdrop-blur-xl border border-purple-500/30 rounded-2xl p-6 shadow-2xl max-w-2xl">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
               <div>
-                <p className="text-white font-bold">Creating your designs...</p>
-                <p className="text-purple-300 text-sm">Usually takes 20-40 seconds</p>
+                <p className="text-white font-bold">{t.generation.creating}</p>
+                <p className="text-purple-300 text-sm">{t.generation.timeEstimate}</p>
               </div>
             </div>
 
@@ -311,7 +354,7 @@ export default function FloatingUI({
         </div>
       )}
 
-      {/* Saved Designs Modal */}
+      {/* Модальное окно сохранённых дизайнов */}
       {showSaved && (
         <SavedDesigns
           designs={savedDesigns}

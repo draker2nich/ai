@@ -1,6 +1,6 @@
 /**
- * Backend proxy server for Replicate API
- * Handles CORS and provides a secure layer between frontend and Replicate
+ * Backend proxy server for Custom OpenAI-compatible API
+ * Handles CORS and provides a secure layer between frontend and API
  */
 
 const express = require('express');
@@ -10,9 +10,12 @@ const fetch = require('node-fetch');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Default API base URL (can be overridden by client)
+const DEFAULT_BASE_URL = 'https://api.aiguoguo199.com/v1';
+
 // Middleware
-app.use(cors()); // Enable CORS for frontend
-app.use(express.json({ limit: '10mb' })); // Parse JSON with size limit
+app.use(cors());
+app.use(express.json({ limit: '10mb' }));
 
 // Request logging middleware
 app.use((req, res, next) => {
@@ -25,82 +28,101 @@ app.use((req, res, next) => {
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
-    message: 'Proxy server is running',
+    message: 'Custom OpenAI proxy server is running',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
+    apiBaseUrl: DEFAULT_BASE_URL
   });
 });
 
 // API info endpoint
 app.get('/api', (req, res) => {
   res.json({
-    name: 'AI Fashion Studio API Proxy',
-    version: '1.0.0',
+    name: 'AI Fashion Studio API Proxy (Custom OpenAI)',
+    version: '2.0.0',
+    apiProvider: 'aiguoguo199.com',
     endpoints: {
       health: '/health',
-      createPrediction: 'POST /api/predictions',
-      getPrediction: 'GET /api/predictions/:id',
-      cancelPrediction: 'POST /api/cancel/:id'
+      generateImage: 'POST /api/generate',
+      chat: 'POST /api/chat'
     }
   });
 });
 
 /**
- * POST /api/predictions
- * Create a new prediction (generate image)
+ * POST /api/generate
+ * Generate image using DALL-E via custom API
  */
-app.post('/api/predictions', async (req, res) => {
+app.post('/api/generate', async (req, res) => {
   try {
-    const { apiKey, ...body } = req.body;
+    const { 
+      apiKey, 
+      prompt, 
+      size = '1024x1024', 
+      quality = 'standard', 
+      style = 'vivid',
+      baseUrl = DEFAULT_BASE_URL 
+    } = req.body;
 
     // Validate API key
     if (!apiKey) {
       return res.status(400).json({ 
         error: 'API key is required',
-        message: 'Please provide your Replicate API key'
+        message: 'Please provide your API key'
       });
     }
 
-    if (!apiKey.startsWith('r8_')) {
+    if (!apiKey.startsWith('sk-')) {
       return res.status(400).json({ 
         error: 'Invalid API key format',
-        message: 'API key should start with r8_'
+        message: 'API key should start with sk-'
       });
     }
 
-    // Validate request body
-    if (!body.version) {
+    // Validate prompt
+    if (!prompt) {
       return res.status(400).json({ 
-        error: 'Model version is required',
-        message: 'Please specify the model version'
+        error: 'Prompt is required',
+        message: 'Please specify the image prompt'
       });
     }
 
-    console.log('📤 Creating prediction...');
+    console.log('📤 Generating image with DALL-E...');
+    console.log(`   Base URL: ${baseUrl}`);
+    console.log(`   Size: ${size}, Quality: ${quality}, Style: ${style}`);
     const startTime = Date.now();
 
-    const response = await fetch('https://api.replicate.com/v1/predictions', {
+    const apiUrl = `${baseUrl}/images/generations`;
+    
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Token ${apiKey}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'User-Agent': 'AI-Fashion-Studio/1.0'
+        'User-Agent': 'AI-Fashion-Studio/2.0'
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify({
+        model: 'dall-e-3',
+        prompt: prompt,
+        n: 1,
+        size: size,
+        quality: quality,
+        style: style
+      })
     });
 
     const data = await response.json();
     const duration = Date.now() - startTime;
 
     if (!response.ok) {
-      console.error(`❌ Failed to create prediction (${duration}ms):`, data);
+      console.error(`❌ Failed to generate image (${duration}ms):`, data);
       return res.status(response.status).json(data);
     }
 
-    console.log(`✅ Prediction created: ${data.id} (${duration}ms)`);
+    console.log(`✅ Image generated successfully (${duration}ms)`);
     res.json(data);
   } catch (error) {
-    console.error('❌ Error creating prediction:', error);
+    console.error('❌ Error generating image:', error);
     res.status(500).json({ 
       error: 'Internal server error', 
       message: error.message,
@@ -110,92 +132,65 @@ app.post('/api/predictions', async (req, res) => {
 });
 
 /**
- * GET /api/predictions/:id
- * Get prediction status
+ * POST /api/chat
+ * Chat completion endpoint (for future use)
  */
-app.get('/api/predictions/:id', async (req, res) => {
+app.post('/api/chat', async (req, res) => {
   try {
-    const { id } = req.params;
-    const apiKey = req.headers['x-api-key'];
+    const { 
+      apiKey, 
+      messages, 
+      model = 'gpt-4o',
+      baseUrl = DEFAULT_BASE_URL 
+    } = req.body;
 
     if (!apiKey) {
       return res.status(400).json({ 
         error: 'API key is required',
-        message: 'Please provide API key in x-api-key header' 
+        message: 'Please provide your API key'
       });
     }
 
-    const response = await fetch(`https://api.replicate.com/v1/predictions/${id}`, {
-      headers: {
-        'Authorization': `Token ${apiKey}`,
-        'User-Agent': 'AI-Fashion-Studio/1.0'
-      }
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error(`❌ Failed to get prediction ${id}:`, data);
-      return res.status(response.status).json(data);
-    }
-
-    // Log status updates for completed predictions
-    if (data.status === 'succeeded') {
-      console.log(`✅ Prediction ${id} completed`);
-    } else if (data.status === 'failed') {
-      console.error(`❌ Prediction ${id} failed:`, data.error);
-    }
-
-    res.json(data);
-  } catch (error) {
-    console.error('❌ Error getting prediction:', error);
-    res.status(500).json({ 
-      error: 'Internal server error', 
-      message: error.message 
-    });
-  }
-});
-
-/**
- * POST /api/cancel/:id
- * Cancel a prediction
- */
-app.post('/api/cancel/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const apiKey = req.headers['x-api-key'];
-
-    if (!apiKey) {
+    if (!messages || !Array.isArray(messages)) {
       return res.status(400).json({ 
-        error: 'API key is required',
-        message: 'Please provide API key in x-api-key header' 
+        error: 'Messages array is required',
+        message: 'Please provide a valid messages array'
       });
     }
 
-    console.log(`🛑 Canceling prediction ${id}...`);
+    console.log('💬 Processing chat completion...');
+    const startTime = Date.now();
 
-    const response = await fetch(`https://api.replicate.com/v1/predictions/${id}/cancel`, {
+    const apiUrl = `${baseUrl}/chat/completions`;
+
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Token ${apiKey}`,
-        'User-Agent': 'AI-Fashion-Studio/1.0'
-      }
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'User-Agent': 'AI-Fashion-Studio/2.0'
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: messages
+      })
     });
 
     const data = await response.json();
+    const duration = Date.now() - startTime;
 
     if (!response.ok) {
-      console.error(`❌ Failed to cancel prediction ${id}:`, data);
+      console.error(`❌ Failed to complete chat (${duration}ms):`, data);
       return res.status(response.status).json(data);
     }
 
-    console.log(`✅ Prediction ${id} canceled`);
+    console.log(`✅ Chat completed successfully (${duration}ms)`);
     res.json(data);
   } catch (error) {
-    console.error('❌ Error canceling prediction:', error);
+    console.error('❌ Error processing chat:', error);
     res.status(500).json({ 
       error: 'Internal server error', 
-      message: error.message 
+      message: error.message
     });
   }
 });
@@ -208,11 +203,8 @@ app.use((req, res) => {
     availableEndpoints: {
       health: 'GET /health',
       api: 'GET /api',
-      predictions: {
-        create: 'POST /api/predictions',
-        get: 'GET /api/predictions/:id',
-        cancel: 'POST /api/cancel/:id'
-      }
+      generate: 'POST /api/generate',
+      chat: 'POST /api/chat'
     }
   });
 });
@@ -229,15 +221,16 @@ app.use((error, req, res, next) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log('\n' + '='.repeat(60));
-  console.log('🚀 AI Fashion Studio - Backend Proxy Server');
-  console.log('='.repeat(60));
+  console.log('\n' + '='.repeat(70));
+  console.log('🚀 AI Fashion Studio - Custom OpenAI Backend Proxy Server');
+  console.log('='.repeat(70));
   console.log(`📡 Server running on: http://localhost:${PORT}`);
   console.log(`🏥 Health check: http://localhost:${PORT}/health`);
   console.log(`📚 API info: http://localhost:${PORT}/api`);
+  console.log(`🔗 API Base URL: ${DEFAULT_BASE_URL}`);
   console.log(`✅ CORS enabled for all origins`);
   console.log(`🔒 API keys handled securely`);
-  console.log('='.repeat(60) + '\n');
+  console.log('='.repeat(70) + '\n');
 });
 
 // Graceful shutdown

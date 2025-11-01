@@ -5,7 +5,7 @@
 import React, { useState, useEffect } from 'react';
 import BackgroundCanvas from './components/BackgroundCanvas';
 import FloatingUI from './components/FloatingUI';
-import { generateDesigns, isApiKeyConfigured } from './services/replicateService';
+import { generateDesigns, isApiKeyConfigured } from './services/openaiService';
 import { saveDesign, getSavedDesigns, deleteDesign } from './utils/storageService';
 import { useLanguage } from './locales/LanguageContext';
 

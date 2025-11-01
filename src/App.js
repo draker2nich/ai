@@ -5,6 +5,7 @@
 import React, { useState, useEffect } from 'react';
 import BackgroundCanvas from './components/BackgroundCanvas';
 import FloatingUI from './components/FloatingUI';
+import PrintPreparationModal from './components/PrintPreparationModal';
 import { generateDesigns, isApiKeyConfigured } from './services/openaiService';
 import { saveDesign, getSavedDesigns, deleteDesign } from './utils/storageService';
 import { useLanguage } from './locales/LanguageContext';
@@ -36,6 +37,9 @@ function App() {
   
   // Состояние автовращения - по умолчанию включено
   const [autoRotate, setAutoRotate] = useState(true);
+
+  // НОВОЕ: состояние модального окна печати
+  const [showPrintModal, setShowPrintModal] = useState(false);
 
   // Логирование изменений автовращения
   useEffect(() => {
@@ -158,6 +162,15 @@ function App() {
     }
   };
 
+  // НОВОЕ: Открытие модального окна печати
+  const handlePreparePrint = () => {
+    if (!selectedDesign) {
+      setError('Выберите дизайн для подготовки к печати');
+      return;
+    }
+    setShowPrintModal(true);
+  };
+
   // Показ уведомления
   const showNotification = (message, type = 'success') => {
     const notification = document.createElement('div');
@@ -187,7 +200,7 @@ function App() {
       {/* 3D фон с моделью */}
       <BackgroundCanvas 
         design={selectedDesign}
-        isVisible={!showSaved}
+        isVisible={!showSaved && !showPrintModal}
         autoRotate={autoRotate}
         onAutoRotateChange={setAutoRotate}
       />
@@ -205,6 +218,7 @@ function App() {
         onSelectDesign={setSelectedDesign}
         onSave={handleSaveDesign}
         onDownload={handleDownload}
+        onPreparePrint={handlePreparePrint}
         savedDesigns={savedDesigns}
         showSaved={showSaved}
         onShowSavedToggle={() => setShowSaved(!showSaved)}
@@ -219,6 +233,14 @@ function App() {
         autoRotate={autoRotate}
         onAutoRotateChange={setAutoRotate}
       />
+
+      {/* НОВОЕ: Модальное окно подготовки к печати */}
+      {showPrintModal && selectedDesign && (
+        <PrintPreparationModal
+          design={selectedDesign}
+          onClose={() => setShowPrintModal(false)}
+        />
+      )}
 
       <style jsx global>{`
         @keyframes slideInRight {

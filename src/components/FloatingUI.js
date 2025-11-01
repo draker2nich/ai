@@ -20,6 +20,7 @@ export default function FloatingUI({
   onSelectDesign,
   onSave,
   onDownload,
+  onPreparePrint, // НОВЫЙ ПРОП
   savedDesigns,
   showSaved,
   onShowSavedToggle,
@@ -310,7 +311,7 @@ export default function FloatingUI({
 
                 {/* Кнопки действий */}
                 {selectedDesign && (
-                  <div className="p-6 border-t border-purple-500/20">
+                  <div className="p-6 border-t border-purple-500/20 space-y-2">
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         onClick={onSave}
@@ -330,6 +331,17 @@ export default function FloatingUI({
                         {t.gallery.download}
                       </button>
                     </div>
+
+                    {/* НОВАЯ КНОПКА: Подготовить к печати */}
+                    <button
+                      onClick={onPreparePrint}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white rounded-lg font-bold transition-all text-sm shadow-lg"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                      </svg>
+                      {language === 'ru' ? '🖨️ Подготовить к печати' : '🖨️ Prepare for Print'}
+                    </button>
                   </div>
                 )}
               </div>

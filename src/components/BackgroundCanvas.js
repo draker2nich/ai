@@ -1,6 +1,7 @@
 /**
  * Компонент 3D фона с моделью одежды
  * Отображает интерактивную 3D сцену с возможностью вращения камеры
+ * ИСПРАВЛЕНО: Правильное применение текстуры на модель
  */
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
@@ -24,7 +25,8 @@ export default function BackgroundCanvas({ design, isVisible, autoRotate, onAuto
   useEffect(() => {
     console.log('🎬 BackgroundCanvas получил пропсы:', { 
       autoRotate, 
-      hasOnAutoRotateChange: !!onAutoRotateChange 
+      hasOnAutoRotateChange: !!onAutoRotateChange,
+      hasDesign: !!design
     });
   }, []);
 
@@ -205,6 +207,22 @@ export default function BackgroundCanvas({ design, isVisible, autoRotate, onAuto
         model.position.y = -80;
         model.castShadow = true;
         model.receiveShadow = true;
+        
+        // ВАЖНО: Создаём базовый материал для модели
+        model.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            // Создаём белый базовый материал, на который будем накладывать текстуры
+            child.material = new THREE.MeshStandardMaterial({
+              color: 0xffffff, // Белый цвет - база для текстур
+              roughness: 0.85,
+              metalness: 0.02,
+              side: THREE.DoubleSide
+            });
+            child.castShadow = true;
+            child.receiveShadow = true;
+          }
+        });
+        
         scene.add(model);
         tshirtRef.current = model;
         setIsLoading(false);
@@ -295,38 +313,71 @@ export default function BackgroundCanvas({ design, isVisible, autoRotate, onAuto
     }
   }, [autoRotate]);
 
-  // Обновление текстуры при смене дизайна
+  // ИСПРАВЛЕНО: Обновление текстуры при смене дизайна
   useEffect(() => {
-    if (!design || !tshirtRef.current) return;
+    if (!design || !tshirtRef.current) {
+      console.log('⏭️ Пропуск обновления текстуры:', { hasDesign: !!design, hasModel: !!tshirtRef.current });
+      return;
+    }
 
-    console.log('🎨 Обновление текстуры дизайна');
+    console.log('🎨 Начинаем обновление текстуры дизайна');
+    console.log('   URL дизайна:', design.url);
     
     const textureLoader = new THREE.TextureLoader();
+    
+    // Включаем CORS для загрузки изображений
+    textureLoader.crossOrigin = 'anonymous';
+    
     textureLoader.load(
       design.url,
       (texture) => {
+        console.log('✅ Текстура загружена успешно');
+        
         // Очистка старой текстуры
         if (currentTextureRef.current) {
           currentTextureRef.current.dispose();
+          console.log('🗑️ Старая текстура удалена');
         }
 
+        // Настройка текстуры для повторения (бесшовный паттерн)
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
         texture.encoding = THREE.sRGBEncoding;
+        texture.minFilter = THREE.LinearMipmapLinearFilter;
+        texture.magFilter = THREE.LinearFilter;
+        texture.anisotropy = rendererRef.current?.capabilities.getMaxAnisotropy() || 16;
         
+        console.log('⚙️ Применяем текстуру к модели...');
+        
+        // Применяем текстуру ко всем mesh объектам модели
+        let meshCount = 0;
         tshirtRef.current.traverse((child) => {
           if (child instanceof THREE.Mesh) {
-            child.material.map = texture;
+            // ВАЖНО: Создаём НОВЫЙ материал с текстурой
+            child.material = new THREE.MeshStandardMaterial({
+              map: texture,
+              roughness: 0.85,
+              metalness: 0.02,
+              side: THREE.DoubleSide
+            });
             child.material.needsUpdate = true;
+            meshCount++;
           }
         });
 
         currentTextureRef.current = texture;
-        console.log('✅ Текстура обновлена успешно');
+        console.log(`✅ Текстура применена к ${meshCount} mesh объектам`);
       },
-      undefined,
+      (progress) => {
+        if (progress.lengthComputable) {
+          const percent = (progress.loaded / progress.total) * 100;
+          console.log(`📥 Загрузка текстуры: ${percent.toFixed(0)}%`);
+        }
+      },
       (error) => {
         console.error('❌ Ошибка загрузки текстуры:', error);
+        console.error('   URL:', design.url);
+        console.error('   Возможные причины: CORS, неверный URL, недоступен сервер');
       }
     );
   }, [design]);

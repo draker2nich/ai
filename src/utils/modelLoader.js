@@ -1,6 +1,6 @@
 /**
- * Утилиты для загрузки 3D-моделей - GLTF/GLBonly
- * Минимальные логи, максимальная производительность
+ * Утилиты для загрузки 3D-моделей - GLTF/GLB only
+ * Использует встроенную текстуру из GLB файла
  */
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
@@ -57,15 +57,32 @@ function analyzeModel(model) {
 }
 
 /**
- * Применение текстуры к модели
+ * Применение текстуры к модели (только если текстура передана)
  */
-function applyTextureToModel(model, texture, flipY = false) {
-  if (flipY) {
-    texture.flipY = false;
+function applyTextureToModel(model, texture) {
+  if (!texture) {
+    console.log('ℹ️ Используется встроенная текстура из GLB файла');
+    // Настраиваем материалы для улучшенного рендеринга
+    model.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        if (child.material) {
+          // Сохраняем оригинальный материал, но улучшаем его параметры
+          child.material.roughness = 0.85;
+          child.material.metalness = 0.02;
+          child.material.side = THREE.DoubleSide;
+          child.material.needsUpdate = true;
+        }
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+    return;
   }
-  
+
+  // Если текстура передана явно - применяем её
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
+  texture.encoding = THREE.sRGBEncoding;
   
   model.traverse((child) => {
     if (child instanceof THREE.Mesh) {
@@ -115,7 +132,7 @@ export function loadGLTFModel(modelPath, texture, onProgress, onComplete, onErro
     (gltf) => {
       const model = gltf.scene;
       analyzeModel(model);
-      applyTextureToModel(model, texture, MODEL_CONFIG.flipTextureY);
+      applyTextureToModel(model, texture);
       const processedModel = processModel(model, MODEL_CONFIG);
       onComplete(processedModel);
     },
@@ -142,7 +159,7 @@ export function loadTShirtModel(texture, onProgress, onComplete, onError) {
   
   loadGLTFModel(
     MODEL_CONFIG.modelPath,
-    texture,
+    texture, // Может быть null - тогда используется встроенная текстура
     progressHandler,
     onComplete,
     errorHandler

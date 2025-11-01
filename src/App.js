@@ -33,6 +33,14 @@ function App() {
   const [savedDesigns, setSavedDesigns] = useState([]);
   const [showSaved, setShowSaved] = useState(false);
   const [uiVisible, setUiVisible] = useState(true);
+  
+  // Состояние автовращения - по умолчанию включено
+  const [autoRotate, setAutoRotate] = useState(true);
+
+  // Логирование изменений автовращения
+  useEffect(() => {
+    console.log('🎯 App: autoRotate изменено на', autoRotate);
+  }, [autoRotate]);
 
   // Проверка API ключа при загрузке
   useEffect(() => {
@@ -180,6 +188,8 @@ function App() {
       <BackgroundCanvas 
         design={selectedDesign}
         isVisible={!showSaved}
+        autoRotate={autoRotate}
+        onAutoRotateChange={setAutoRotate}
       />
 
       {/* Плавающий интерфейс */}
@@ -206,6 +216,8 @@ function App() {
         apiConfigured={apiConfigured}
         uiVisible={uiVisible}
         onToggleUI={() => setUiVisible(!uiVisible)}
+        autoRotate={autoRotate}
+        onAutoRotateChange={setAutoRotate}
       />
 
       <style jsx global>{`

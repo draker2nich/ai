@@ -30,7 +30,9 @@ export default function FloatingUI({
   imageStatuses,
   apiConfigured,
   uiVisible,
-  onToggleUI
+  onToggleUI,
+  autoRotate,
+  onAutoRotateChange
 }) {
   const { t, language, changeLanguage } = useLanguage();
 
@@ -205,6 +207,50 @@ export default function FloatingUI({
                     disabled={isGenerating}
                     className="w-full h-2 bg-purple-900/50 rounded-full appearance-none cursor-pointer slider"
                   />
+                </div>
+
+                {/* Кнопка автовращения */}
+                <div className="pt-4 border-t border-purple-500/20">
+                  <button
+                    onClick={() => {
+                      console.log('🖱️ Клик по кнопке автовращения, текущее:', autoRotate);
+                      onAutoRotateChange(!autoRotate);
+                    }}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all border-2 ${
+                      autoRotate 
+                        ? 'bg-purple-600/30 border-purple-500/50 text-purple-200' 
+                        : 'bg-black/30 border-purple-500/20 text-purple-400'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <svg 
+                        className={`w-5 h-5 transition-transform ${autoRotate ? 'animate-spin-slow' : ''}`} 
+                        fill="none" 
+                        viewBox="0 0 24 24" 
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      <div className="text-left">
+                        <p className="text-sm font-semibold">
+                          {language === 'ru' ? 'Автовращение' : 'Auto-rotate'}
+                        </p>
+                        <p className="text-xs opacity-70">
+                          {autoRotate 
+                            ? (language === 'ru' ? 'Включено' : 'Enabled')
+                            : (language === 'ru' ? 'Выключено' : 'Disabled')
+                          }
+                        </p>
+                      </div>
+                    </div>
+                    <div className={`w-12 h-6 rounded-full relative transition-all ${
+                      autoRotate ? 'bg-purple-600' : 'bg-gray-600'
+                    }`}>
+                      <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                        autoRotate ? 'translate-x-6' : 'translate-x-0.5'
+                      }`}></div>
+                    </div>
+                  </button>
                 </div>
               </div>
             </div>
@@ -396,6 +442,19 @@ export default function FloatingUI({
           background: linear-gradient(135deg, #9333ea, #ec4899);
           cursor: pointer;
           box-shadow: 0 2px 8px rgba(147, 51, 234, 0.5);
+        }
+
+        @keyframes spin-slow {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
+        .animate-spin-slow {
+          animation: spin-slow 3s linear infinite;
         }
       `}</style>
     </>
